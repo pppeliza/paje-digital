@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Gift, Users, LogOut, Plus, Trash2, Check, X, Bell, Settings, Upload, Link as LinkIcon } from 'lucide-react';
 
@@ -16,6 +16,10 @@ export default function PajeDigital() {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [gifts, setGifts] = useState([]);
   const [members, setMembers] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const previousUnreadCount = useRef(0);
 
   // Auth states
   const [email, setEmail] = useState('');
@@ -48,6 +52,11 @@ export default function PajeDigital() {
   useEffect(() => {
     if (selectedGroup) {
       loadGroupData();
+      loadNotifications();
+      
+      // Poll for new notifications every 10 seconds
+      const interval = setInterval(loadNotifications, 10000);
+      return () => clearInterval(interval);
     }
   }, [selectedGroup]);
 
@@ -144,6 +153,68 @@ export default function PajeDigital() {
       .eq('group_id', selectedGroup.id);
 
     setMembers(membersData || []);
+  };
+
+  const loadNotifications = async () => {
+    if (!user || !selectedGroup) return;
+    
+    const { data: notifData } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('group_id', selectedGroup.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (notifData) {
+      // Check if there are new unread notifications
+      const newUnreadCount = notifData.filter(n => !n.read).length;
+      
+      setNotifications(notifData);
+      setUnreadCount(newUnreadCount);
+      
+      // Play sound if there's a new notification (count increased)
+      if (newUnreadCount > previousUnreadCount.current) {
+        playNotificationSound();
+      }
+      
+      // Update the ref for next comparison
+      previousUnreadCount.current = newUnreadCount;
+    }
+  };
+
+  const playNotificationSound = () => {
+    // Create a simple beep sound
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
+  };
+
+  const markNotificationsAsRead = async () => {
+    if (notifications.length === 0) return;
+    
+    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+    if (unreadIds.length > 0) {
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .in('id', unreadIds);
+      
+      setUnreadCount(0);
+      loadNotifications();
+    }
   };
 
   const createGroup = async (e) => {
@@ -253,7 +324,20 @@ export default function PajeDigital() {
     loadGroupData();
   };
 
-  const deleteGift = async (giftId) => {
+  const deleteGift = async (giftId, giftName) => {
+    const gift = gifts.find(g => g.id === giftId);
+    const hasReservations = gift?.reservations?.length > 0;
+    
+    if (hasReservations) {
+      alert(`No puedes eliminar "${giftName}" porque ya está reservado por alguien. Pídele a esa persona que lo des-reserve primero.`);
+      return;
+    }
+    
+    if (!confirm(`¿Seguro que quieres eliminar "${giftName}"?`)) {
+      return;
+    }
+    
+    // Delete gift
     await supabase.from('gifts').delete().eq('id', giftId);
     loadGroupData();
   };
@@ -526,6 +610,20 @@ export default function PajeDigital() {
                   <p className="font-mono font-bold text-yellow-800">{selectedGroup.invite_code}</p>
                 </div>
               )}
+              <button
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  if (!showNotifications) markNotificationsAsRead();
+                }}
+                className="relative px-4 py-2 text-gray-600 hover:text-blue-600 transition"
+              >
+                <Bell size={24} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
               <button
                 onClick={handleSignOut}
                 className="px-4 py-2 text-gray-600 hover:text-red-600"
