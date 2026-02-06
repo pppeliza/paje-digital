@@ -476,27 +476,27 @@ export default function PajeDigital() {
             <p className="text-gray-600 mb-4">Organiza los regalos de Reyes en familia</p>
             
             {/* Countdown to Reyes */}
-            <div className="bg-gradient-to-r from-red-100 to-green-100 rounded-lg p-4 border-2 border-red-300">
-              <p className="text-sm font-semibold text-red-700 mb-2">⏰ Faltan para Reyes:</p>
-              <div className="flex justify-center gap-3 text-center">
-                <div className="bg-white rounded-lg px-3 py-2 min-w-[60px]">
-                  <div className="text-2xl font-bold text-red-600">{countdown.months}</div>
+            <div className="bg-gradient-to-r from-red-100 to-green-100 rounded-lg p-3 md:p-4 border-2 border-red-300">
+              <p className="text-xs md:text-sm font-semibold text-red-700 mb-2">⏰ Faltan para Reyes:</p>
+              <div className="flex justify-center gap-2 md:gap-3 text-center">
+                <div className="bg-white rounded-lg px-2 md:px-3 py-2 min-w-[50px] md:min-w-[60px]">
+                  <div className="text-xl md:text-2xl font-bold text-red-600">{countdown.months}</div>
                   <div className="text-xs text-gray-600">meses</div>
                 </div>
-                <div className="bg-white rounded-lg px-3 py-2 min-w-[60px]">
-                  <div className="text-2xl font-bold text-red-600">{countdown.days}</div>
+                <div className="bg-white rounded-lg px-2 md:px-3 py-2 min-w-[50px] md:min-w-[60px]">
+                  <div className="text-xl md:text-2xl font-bold text-red-600">{countdown.days}</div>
                   <div className="text-xs text-gray-600">días</div>
                 </div>
-                <div className="bg-white rounded-lg px-3 py-2 min-w-[60px]">
-                  <div className="text-2xl font-bold text-red-600">{countdown.hours}</div>
+                <div className="bg-white rounded-lg px-2 md:px-3 py-2 min-w-[50px] md:min-w-[60px]">
+                  <div className="text-xl md:text-2xl font-bold text-red-600">{countdown.hours}</div>
                   <div className="text-xs text-gray-600">horas</div>
                 </div>
-                <div className="bg-white rounded-lg px-3 py-2 min-w-[60px]">
-                  <div className="text-2xl font-bold text-red-600">{countdown.minutes}</div>
+                <div className="bg-white rounded-lg px-2 md:px-3 py-2 min-w-[50px] md:min-w-[60px]">
+                  <div className="text-xl md:text-2xl font-bold text-red-600">{countdown.minutes}</div>
                   <div className="text-xs text-gray-600">min</div>
                 </div>
-                <div className="bg-white rounded-lg px-3 py-2 min-w-[60px]">
-                  <div className="text-2xl font-bold text-red-600">{countdown.seconds}</div>
+                <div className="bg-white rounded-lg px-2 md:px-3 py-2 min-w-[50px] md:min-w-[60px]">
+                  <div className="text-xl md:text-2xl font-bold text-red-600">{countdown.seconds}</div>
                   <div className="text-xs text-gray-600">seg</div>
                 </div>
               </div>
@@ -606,30 +606,46 @@ export default function PajeDigital() {
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-green-50 p-4">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-6 mb-6 border-2 border-red-200">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h1 className="text-3xl font-bold text-red-700">Paje Digital</h1>
-                <p className="text-gray-600">Hola, {user.user_metadata?.username || user.email}</p>
-              </div>
-              <div className="flex items-center gap-4">
-                {/* Compact countdown */}
-                <div className="bg-gradient-to-r from-red-50 to-green-50 rounded-lg px-4 py-2 border border-red-200">
-                  <div className="text-xs text-red-700 font-semibold mb-1">⏰ Faltan para Reyes:</div>
-                  <div className="flex gap-2 text-center">
-                    <div><span className="text-lg font-bold text-red-600">{countdown.months}</span><span className="text-xs text-gray-600">m</span></div>
-                    <div><span className="text-lg font-bold text-red-600">{countdown.days}</span><span className="text-xs text-gray-600">d</span></div>
-                    <div><span className="text-lg font-bold text-red-600">{countdown.hours}</span><span className="text-xs text-gray-600">h</span></div>
-                    <div><span className="text-lg font-bold text-red-600">{countdown.minutes}</span><span className="text-xs text-gray-600">m</span></div>
-                    <div><span className="text-lg font-bold text-red-600">{countdown.seconds}</span><span className="text-xs text-gray-600">s</span></div>
-                  </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h1 className="text-3xl font-bold text-red-700">Paje Digital</h1>
+                  <p className="text-gray-600">Hola, {user.user_metadata?.username || user.email}</p>
                 </div>
                 <button
                   onClick={handleSignOut}
                   className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-red-600 transition"
                 >
                   <LogOut size={20} />
-                  Salir
+                  <span className="hidden sm:inline">Salir</span>
                 </button>
+              </div>
+              
+              {/* Compact countdown - full width on mobile */}
+              <div className="bg-gradient-to-r from-red-50 to-green-50 rounded-lg px-4 py-3 border border-red-200">
+                <div className="text-xs text-red-700 font-semibold mb-2 text-center">⏰ Faltan para Reyes:</div>
+                <div className="flex justify-center gap-2 text-center">
+                  <div className="bg-white rounded px-2 py-1 min-w-[45px]">
+                    <div className="text-lg font-bold text-red-600">{countdown.months}</div>
+                    <div className="text-xs text-gray-600">m</div>
+                  </div>
+                  <div className="bg-white rounded px-2 py-1 min-w-[45px]">
+                    <div className="text-lg font-bold text-red-600">{countdown.days}</div>
+                    <div className="text-xs text-gray-600">d</div>
+                  </div>
+                  <div className="bg-white rounded px-2 py-1 min-w-[45px]">
+                    <div className="text-lg font-bold text-red-600">{countdown.hours}</div>
+                    <div className="text-xs text-gray-600">h</div>
+                  </div>
+                  <div className="bg-white rounded px-2 py-1 min-w-[45px]">
+                    <div className="text-lg font-bold text-red-600">{countdown.minutes}</div>
+                    <div className="text-xs text-gray-600">m</div>
+                  </div>
+                  <div className="bg-white rounded px-2 py-1 min-w-[45px]">
+                    <div className="text-lg font-bold text-red-600">{countdown.seconds}</div>
+                    <div className="text-xs text-gray-600">s</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -744,81 +760,89 @@ export default function PajeDigital() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-green-50 p-4">
       <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6 border-2 border-red-200">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
+        <div className="bg-white rounded-2xl shadow-xl p-4 md:p-6 mb-6 border-2 border-red-200">
+          <div className="flex flex-col gap-3">
+            {/* First row: Back button and title */}
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setSelectedGroup(null)}
-                className="text-gray-600 hover:text-red-600"
+                className="text-gray-600 hover:text-red-600 flex-shrink-0"
               >
                 ← Volver
               </button>
-              <div>
-                <h1 className="text-3xl font-bold text-red-700">{selectedGroup.name}</h1>
-                <p className="text-sm text-gray-600">{members.length} miembros</p>
-              </div>
-              {/* Compact countdown in group view */}
-              <div className="ml-4 bg-gradient-to-r from-red-50 to-green-50 rounded-lg px-3 py-2 border border-red-200">
-                <div className="text-xs text-red-700 font-semibold">⏰ Reyes en:</div>
-                <div className="flex gap-1 text-center text-xs">
-                  <div><span className="font-bold text-red-600">{countdown.months}</span>m</div>
-                  <div><span className="font-bold text-red-600">{countdown.days}</span>d</div>
-                  <div><span className="font-bold text-red-600">{countdown.hours}</span>h</div>
-                  <div><span className="font-bold text-red-600">{countdown.minutes}</span>m</div>
-                  <div><span className="font-bold text-red-600">{countdown.seconds}</span>s</div>
-                </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl md:text-3xl font-bold text-red-700 truncate">{selectedGroup.name}</h1>
+                <p className="text-xs md:text-sm text-gray-600">{members.length} miembros</p>
               </div>
             </div>
-            <div className="flex gap-2">
+            
+            {/* Second row: Countdown - compact on mobile */}
+            <div className="bg-gradient-to-r from-red-50 to-green-50 rounded-lg px-3 py-2 border border-red-200">
+              <div className="text-xs text-red-700 font-semibold text-center mb-1">⏰ Reyes en:</div>
+              <div className="flex justify-center gap-1 text-center text-xs">
+                <div><span className="font-bold text-red-600">{countdown.months}</span>m</div>
+                <div><span className="font-bold text-red-600">{countdown.days}</span>d</div>
+                <div><span className="font-bold text-red-600">{countdown.hours}</span>h</div>
+                <div><span className="font-bold text-red-600">{countdown.minutes}</span>m</div>
+                <div><span className="font-bold text-red-600">{countdown.seconds}</span>s</div>
+              </div>
+            </div>
+            
+            {/* Third row: Admin controls and buttons */}
+            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
               {selectedGroup.admin_id === user.id && (
-                <>
-                  <div className="px-4 py-2 bg-yellow-100 rounded-lg">
-                    <p className="text-xs text-gray-600">Código de invitación:</p>
-                    <p className="font-mono font-bold text-yellow-800">{selectedGroup.invite_code}</p>
+                <div className="flex gap-2 flex-1">
+                  <div className="px-3 py-2 bg-yellow-100 rounded-lg flex-1">
+                    <p className="text-xs text-gray-600">Código:</p>
+                    <p className="font-mono font-bold text-yellow-800 text-sm break-all">{selectedGroup.invite_code}</p>
                   </div>
                   <button
                     onClick={deleteGroup}
-                    className="px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition"
+                    className="px-3 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition flex-shrink-0"
                     title="Eliminar familia"
                   >
                     <Trash2 size={20} />
                   </button>
-                </>
-              )}
-              {notificationPermission === 'default' && (
-                <button
-                  onClick={requestNotificationPermission}
-                  className="px-4 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition text-sm font-medium"
-                  title="Activar notificaciones del navegador"
-                >
-                  🔔 Activar notificaciones
-                </button>
-              )}
-              {notificationPermission === 'granted' && (
-                <div className="px-3 py-2 bg-green-50 text-green-700 rounded-lg text-xs flex items-center gap-1">
-                  ✅ Notificaciones ON
                 </div>
               )}
-              <button
-                onClick={() => {
-                  setShowNotifications(!showNotifications);
-                  if (!showNotifications) markNotificationsAsRead();
-                }}
-                className="relative px-4 py-2 text-gray-600 hover:text-blue-600 transition"
-              >
-                <Bell size={24} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {unreadCount}
-                  </span>
+              
+              <div className="flex gap-2 flex-wrap">
+                {notificationPermission === 'default' && (
+                  <button
+                    onClick={requestNotificationPermission}
+                    className="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition text-xs font-medium flex-1 sm:flex-initial whitespace-nowrap"
+                    title="Activar notificaciones"
+                  >
+                    🔔 Activar
+                  </button>
                 )}
-              </button>
-              <button
-                onClick={handleSignOut}
-                className="px-4 py-2 text-gray-600 hover:text-red-600"
-              >
-                <LogOut size={20} />
-              </button>
+                {notificationPermission === 'granted' && (
+                  <div className="px-2 py-2 bg-green-50 text-green-700 rounded-lg text-xs flex items-center gap-1 flex-1 sm:flex-initial justify-center">
+                    ✅ Notif ON
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    setShowNotifications(!showNotifications);
+                    if (!showNotifications) markNotificationsAsRead();
+                  }}
+                  className="relative px-3 py-2 text-gray-600 hover:text-blue-600 transition flex-shrink-0"
+                >
+                  <Bell size={20} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className="px-3 py-2 text-gray-600 hover:text-red-600 flex items-center gap-1 flex-shrink-0"
+                >
+                  <LogOut size={18} />
+                  <span className="hidden sm:inline text-sm">Salir</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
