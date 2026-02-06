@@ -141,7 +141,18 @@ export default function PajeDigital() {
     });
 
     if (error) {
-      setAuthError(error.message);
+      // Humanize error messages in Spanish
+      let friendlyError = 'Ups, algo salió mal. ¿Puedes intentarlo de nuevo?';
+      
+      if (error.message.includes('already registered') || error.message.includes('already exists')) {
+        friendlyError = 'Este email ya está registrado. ¿Quieres iniciar sesión?';
+      } else if (error.message.includes('invalid email')) {
+        friendlyError = 'Este email no parece válido. Revísalo porfa.';
+      } else if (error.message.includes('password')) {
+        friendlyError = 'La contraseña debe tener al menos 6 caracteres.';
+      }
+      
+      setAuthError(friendlyError);
     } else {
       // Create user profile
       await supabase.from('profiles').insert([
@@ -161,7 +172,18 @@ export default function PajeDigital() {
     });
 
     if (error) {
-      setAuthError(error.message);
+      // Humanize error messages in Spanish
+      let friendlyError = 'Mmm, parece que algo no cuadra.';
+      
+      if (error.message.includes('Invalid login credentials') || error.message.includes('invalid') || error.message.includes('incorrect')) {
+        friendlyError = 'Email o contraseña incorrectos. ¿Los revisas?';
+      } else if (error.message.includes('Email not confirmed')) {
+        friendlyError = 'Necesitas confirmar tu email primero. Revisa tu bandeja de entrada.';
+      } else if (error.message.includes('not found')) {
+        friendlyError = 'No encuentro ese email. ¿Seguro que te registraste?';
+      }
+      
+      setAuthError(friendlyError);
     } else {
       setUser(data.user);
     }
@@ -280,12 +302,12 @@ export default function PajeDigital() {
 
   const requestNotificationPermission = async () => {
     if (!('Notification' in window)) {
-      alert('Tu navegador no soporta notificaciones. Prueba con Chrome, Firefox o Safari actualizado.');
+      alert('Uy, tu navegador no puede mostrar notificaciones 😕\n\nPrueba con Chrome, Firefox o Safari actualizado.');
       return;
     }
     
     if (Notification.permission === 'denied') {
-      alert('Las notificaciones están bloqueadas. Ve a la configuración de tu navegador y actívalas manualmente para este sitio.');
+      alert('Tienes las notificaciones bloqueadas.\n\nSi quieres activarlas, ve a la configuración de tu navegador y permítelas para esta página.');
       return;
     }
     
@@ -296,15 +318,15 @@ export default function PajeDigital() {
         
         if (permission === 'granted') {
           new Notification('🎁 Paje Digital', {
-            body: '¡Notificaciones activadas! Te avisaremos cuando haya novedades.',
+            body: '¡Genial! Te avisaremos cuando haya novedades en la familia.',
             icon: '/gift.svg'
           });
         } else if (permission === 'denied') {
-          alert('Has bloqueado las notificaciones. Si cambias de opinión, actívalas en la configuración de tu navegador.');
+          alert('Vale, sin problema. Si cambias de opinión, puedes activarlas desde la configuración del navegador.');
         }
       } catch (error) {
         console.error('Error requesting notification permission:', error);
-        alert('No se pudo activar las notificaciones. Asegúrate de que tu navegador las soporte y que estés usando HTTPS.');
+        alert('Mmm, algo falló al activar las notificaciones.\n\n¿Estás usando HTTPS? Si no, prueba con Chrome o Firefox.');
       }
     }
   };
@@ -352,7 +374,7 @@ export default function PajeDigital() {
         return;
       }
       console.error('Error creating group:', error);
-      alert('Error al crear la familia. Inténtalo de nuevo.');
+      alert('Vaya, no pude crear la familia 😕\n\n¿Puedes intentarlo otra vez?');
       return;
     }
 
@@ -459,11 +481,11 @@ export default function PajeDigital() {
     const isAdmin = selectedGroup.admin_id === user.id;
     
     if (!isAdmin) {
-      alert('Solo el administrador de la familia puede eliminar regalos.');
+      alert('Solo el admin de la familia puede borrar regalos 🔒\n\nSi necesitas eliminar este regalo, pídele al admin que lo haga por ti.');
       return;
     }
     
-    if (!confirm(`¿Seguro que quieres eliminar "${giftName}"?`)) {
+    if (!confirm(`¿Seguro que quieres borrar "${giftName}"?\n\nEsta acción no se puede deshacer.`)) {
       return;
     }
     
@@ -475,11 +497,11 @@ export default function PajeDigital() {
   const deleteGroup = async () => {
     // Only admin can delete the group
     if (selectedGroup.admin_id !== user.id) {
-      alert('Solo el administrador puede eliminar la familia.');
+      alert('Solo el admin puede eliminar la familia.');
       return;
     }
     
-    if (!confirm(`¿Seguro que quieres eliminar la familia "${selectedGroup.name}"? Esta acción no se puede deshacer y se eliminarán todos los regalos y miembros.`)) {
+    if (!confirm(`⚠️ ¿Estás seguro de eliminar "${selectedGroup.name}"?\n\nSe borrará TODO:\n• Todos los regalos\n• Todas las reservas\n• Todos los miembros\n\nEsta acción NO se puede deshacer.`)) {
       return;
     }
     
@@ -857,9 +879,9 @@ export default function PajeDigital() {
                   <button 
                     onClick={() => {
                       if (isIOSSafari) {
-                        alert('🔕 Notificaciones bloqueadas en iOS Safari:\n\n1. Ve a Ajustes de iOS\n2. Safari → Sitios web → Notificaciones\n3. Busca este sitio y permite notificaciones\n\nO prueba con Chrome/Firefox en iOS.');
+                        alert('🔕 Las notificaciones están bloqueadas en tu iPhone/iPad.\n\nPara activarlas:\n\n1. Ve a Ajustes de iOS\n2. Safari → Sitios web → Notificaciones\n3. Busca este sitio y permite notificaciones\n\n💡 Más fácil: usa Chrome o Firefox en iOS (funcionan directo).');
                       } else {
-                        alert('🔕 Notificaciones bloqueadas:\n\nPara activarlas:\n\nChrome/Edge:\n• Haz clic en el candado/info (🔒) en la barra de direcciones\n• Permisos → Notificaciones → Permitir\n\nFirefox:\n• Haz clic en el candado/info (🔒)\n• Permisos → Notificaciones → Permitir\n\nSafari:\n• Safari → Preferencias → Sitios web → Notificaciones\n• Busca este sitio y permite');
+                        alert('🔕 Las notificaciones están bloqueadas.\n\nPara activarlas:\n\n📱 Chrome/Edge:\n• Toca el candado/info (🔒) arriba\n• Permisos → Notificaciones → Permitir\n\n🦊 Firefox:\n• Toca el candado (🔒) arriba\n• Permisos → Notificaciones → Permitir\n\n🧭 Safari:\n• Safari → Preferencias → Sitios web → Notificaciones\n• Busca este sitio y permite');
                       }
                     }}
                     className="px-2 py-2 bg-red-50 text-red-700 rounded-lg text-xs flex items-center gap-1 flex-1 sm:flex-initial justify-center cursor-pointer hover:bg-red-100 transition"
@@ -870,7 +892,7 @@ export default function PajeDigital() {
                 )}
                 {notificationPermission === 'unsupported' && isIOSSafari && (
                   <button 
-                    onClick={() => alert('🔔 Notificaciones en iOS Safari:\n\n1. Necesitas iOS 16.4 o superior\n2. Añade esta web a tu pantalla de inicio:\n   • Toca el botón "Compartir"\n   • Selecciona "Añadir a pantalla de inicio"\n3. Abre la app desde el icono\n4. Las notificaciones funcionarán\n\nAlternativamente, usa Chrome o Firefox en iOS.')}
+                    onClick={() => alert('🔔 Notificaciones en tu iPhone/iPad:\n\nPara que funcionen necesitas:\n\n1️⃣ iOS 16.4 o más nuevo\n\n2️⃣ Añadir esta web a tu pantalla de inicio:\n   • Toca "Compartir" (□↑) abajo\n   • Selecciona "Añadir a pantalla de inicio"\n   • Dale un nombre\n\n3️⃣ Abre la app desde el icono de tu pantalla\n\n4️⃣ Ahora sí podrás activar notificaciones\n\n💡 Más fácil: usa Chrome o Firefox en iOS')}
                     className="px-2 py-2 bg-yellow-50 text-yellow-700 rounded-lg text-xs flex items-center gap-1 flex-1 sm:flex-initial justify-center cursor-pointer hover:bg-yellow-100 transition"
                     title="Toca para ver cómo activar notificaciones en iOS"
                   >
