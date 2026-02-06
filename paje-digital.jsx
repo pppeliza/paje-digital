@@ -22,6 +22,7 @@ export default function PajeDigital() {
   const previousUnreadCount = useRef(0);
   const [countdown, setCountdown] = useState({ months: 0, days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [notificationPermission, setNotificationPermission] = useState('default');
+  const [isIOSSafari, setIsIOSSafari] = useState(false);
 
   // Auth states
   const [email, setEmail] = useState('');
@@ -44,9 +45,23 @@ export default function PajeDigital() {
   useEffect(() => {
     checkUser();
     
+    // Detect iOS Safari
+    const ua = window.navigator.userAgent;
+    const iOS = /iPad|iPhone|iPod/.test(ua);
+    const webkit = /WebKit/.test(ua);
+    const iOSSafari = iOS && webkit && !/CriOS|FxiOS|OPiOS|mercury/.test(ua);
+    setIsIOSSafari(iOSSafari);
+    
     // Check notification permission
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission);
+      
+      // On iOS Safari, check if notification API is actually available
+      if (iOSSafari && !('Notification' in window && Notification.requestPermission)) {
+        setNotificationPermission('unsupported');
+      }
+    } else {
+      setNotificationPermission('unsupported');
     }
   }, []);
 
@@ -264,15 +279,32 @@ export default function PajeDigital() {
   };
 
   const requestNotificationPermission = async () => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
-      
-      if (permission === 'granted') {
-        new Notification('🎁 Paje Digital', {
-          body: '¡Notificaciones activadas! Te avisaremos cuando haya novedades.',
-          icon: '/gift.svg'
-        });
+    if (!('Notification' in window)) {
+      alert('Tu navegador no soporta notificaciones. Prueba con Chrome, Firefox o Safari actualizado.');
+      return;
+    }
+    
+    if (Notification.permission === 'denied') {
+      alert('Las notificaciones están bloqueadas. Ve a la configuración de tu navegador y actívalas manualmente para este sitio.');
+      return;
+    }
+    
+    if (Notification.permission === 'default') {
+      try {
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+        
+        if (permission === 'granted') {
+          new Notification('🎁 Paje Digital', {
+            body: '¡Notificaciones activadas! Te avisaremos cuando haya novedades.',
+            icon: '/gift.svg'
+          });
+        } else if (permission === 'denied') {
+          alert('Has bloqueado las notificaciones. Si cambias de opinión, actívalas en la configuración de tu navegador.');
+        }
+      } catch (error) {
+        console.error('Error requesting notification permission:', error);
+        alert('No se pudo activar las notificaciones. Asegúrate de que tu navegador las soporte y que estés usando HTTPS.');
       }
     }
   };
@@ -811,7 +843,7 @@ export default function PajeDigital() {
                   <button
                     onClick={requestNotificationPermission}
                     className="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition text-xs font-medium flex-1 sm:flex-initial whitespace-nowrap"
-                    title="Activar notificaciones"
+                    title="Activar notificaciones del navegador"
                   >
                     🔔 Activar
                   </button>
@@ -821,12 +853,45 @@ export default function PajeDigital() {
                     ✅ Notif ON
                   </div>
                 )}
+                {notificationPermission === 'denied' && (
+                  <button 
+                    onClick={() => {
+                      if (isIOSSafari) {
+                        alert('🔕 Notificaciones bloqueadas en iOS Safari:\n\n1. Ve a Ajustes de iOS\n2. Safari → Sitios web → Notificaciones\n3. Busca este sitio y permite notificaciones\n\nO prueba con Chrome/Firefox en iOS.');
+                      } else {
+                        alert('🔕 Notificaciones bloqueadas:\n\nPara activarlas:\n\nChrome/Edge:\n• Haz clic en el candado/info (🔒) en la barra de direcciones\n• Permisos → Notificaciones → Permitir\n\nFirefox:\n• Haz clic en el candado/info (🔒)\n• Permisos → Notificaciones → Permitir\n\nSafari:\n• Safari → Preferencias → Sitios web → Notificaciones\n• Busca este sitio y permite');
+                      }
+                    }}
+                    className="px-2 py-2 bg-red-50 text-red-700 rounded-lg text-xs flex items-center gap-1 flex-1 sm:flex-initial justify-center cursor-pointer hover:bg-red-100 transition"
+                    title="Toca para ver cómo desbloquear notificaciones"
+                  >
+                    🔕 Bloqueado - Toca
+                  </button>
+                )}
+                {notificationPermission === 'unsupported' && isIOSSafari && (
+                  <button 
+                    onClick={() => alert('🔔 Notificaciones en iOS Safari:\n\n1. Necesitas iOS 16.4 o superior\n2. Añade esta web a tu pantalla de inicio:\n   • Toca el botón "Compartir"\n   • Selecciona "Añadir a pantalla de inicio"\n3. Abre la app desde el icono\n4. Las notificaciones funcionarán\n\nAlternativamente, usa Chrome o Firefox en iOS.')}
+                    className="px-2 py-2 bg-yellow-50 text-yellow-700 rounded-lg text-xs flex items-center gap-1 flex-1 sm:flex-initial justify-center cursor-pointer hover:bg-yellow-100 transition"
+                    title="Toca para ver cómo activar notificaciones en iOS"
+                  >
+                    ⚠️ iOS - Toca aquí
+                  </button>
+                )}
+                {notificationPermission === 'unsupported' && !isIOSSafari && (
+                  <div 
+                    className="px-2 py-2 bg-gray-50 text-gray-600 rounded-lg text-xs flex items-center gap-1 flex-1 sm:flex-initial justify-center cursor-help"
+                    title="Tu navegador no soporta notificaciones push. Usa Chrome, Firefox o Safari actualizado."
+                  >
+                    ❌ No disponible
+                  </div>
+                )}
                 <button
                   onClick={() => {
                     setShowNotifications(!showNotifications);
                     if (!showNotifications) markNotificationsAsRead();
                   }}
                   className="relative px-3 py-2 text-gray-600 hover:text-blue-600 transition flex-shrink-0"
+                  title="Ver notificaciones"
                 >
                   <Bell size={20} />
                   {unreadCount > 0 && (
