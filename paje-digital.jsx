@@ -20,6 +20,8 @@ export default function PajeDigital() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const previousUnreadCount = useRef(0);
+  const [countdown, setCountdown] = useState({ months: 0, days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [notificationPermission, setNotificationPermission] = useState('default');
 
   // Auth states
   const [email, setEmail] = useState('');
@@ -41,6 +43,11 @@ export default function PajeDigital() {
 
   useEffect(() => {
     checkUser();
+    
+    // Check notification permission
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
   }, []);
 
   useEffect(() => {
@@ -59,6 +66,44 @@ export default function PajeDigital() {
       return () => clearInterval(interval);
     }
   }, [selectedGroup]);
+
+  // Countdown to Reyes Magos
+  useEffect(() => {
+    const calculateCountdown = () => {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      
+      // Determine target year: if we're between Jan 1-5, target is this year; otherwise next year
+      let targetYear = currentYear;
+      if (now.getMonth() === 0 && now.getDate() <= 5) {
+        targetYear = currentYear;
+      } else if (now.getMonth() > 0 || now.getDate() > 5) {
+        targetYear = currentYear + 1;
+      }
+      
+      const reyesDate = new Date(targetYear, 0, 6, 0, 0, 0); // Jan 6 at 00:00:00
+      const diff = reyesDate - now;
+      
+      if (diff > 0) {
+        const seconds = Math.floor((diff / 1000) % 60);
+        const minutes = Math.floor((diff / 1000 / 60) % 60);
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        
+        // Calculate months (approximate)
+        const months = Math.floor(days / 30);
+        const remainingDays = days % 30;
+        
+        setCountdown({ months, days: remainingDays, hours, minutes, seconds });
+      } else {
+        setCountdown({ months: 0, days: 0, hours: 0, minutes: 0, seconds: 0 });
+      }
+    };
+    
+    calculateCountdown();
+    const interval = setInterval(calculateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -173,9 +218,25 @@ export default function PajeDigital() {
       setNotifications(notifData);
       setUnreadCount(newUnreadCount);
       
-      // Play sound if there's a new notification (count increased)
+      // If there's a new notification (count increased)
       if (newUnreadCount > previousUnreadCount.current) {
         playNotificationSound();
+        
+        // Show browser notification if permitted
+        if (notificationPermission === 'granted') {
+          const latestNotif = notifData.find(n => !n.read);
+          if (latestNotif) {
+            new Notification('🎁 Paje Digital', {
+              body: latestNotif.message,
+              icon: '/gift.svg',
+              badge: '/gift.svg',
+              tag: 'paje-digital'
+            });
+          }
+        }
+        
+        // Reload gifts to show updates
+        loadGroupData();
       }
       
       // Update the ref for next comparison
@@ -202,6 +263,20 @@ export default function PajeDigital() {
     oscillator.stop(audioContext.currentTime + 0.5);
   };
 
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      
+      if (permission === 'granted') {
+        new Notification('🎁 Paje Digital', {
+          body: '¡Notificaciones activadas! Te avisaremos cuando haya novedades.',
+          icon: '/gift.svg'
+        });
+      }
+    }
+  };
+
   const markNotificationsAsRead = async () => {
     if (notifications.length === 0) return;
     
@@ -217,16 +292,39 @@ export default function PajeDigital() {
     }
   };
 
+  const generateInviteCode = () => {
+    // Generate a unique 8-character code
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No confusing chars like O,0,I,1
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
+
   const createGroup = async (e) => {
     e.preventDefault();
     
+    const inviteCode = generateInviteCode();
+    
     const { data: groupData, error } = await supabase
       .from('groups')
-      .insert([{ name: groupName, admin_id: user.id }])
+      .insert([{ name: groupName, admin_id: user.id, invite_code: inviteCode }])
       .select()
       .single();
 
-    if (!error && groupData) {
+    if (error) {
+      // If error is duplicate invite code, try again
+      if (error.code === '23505') {
+        createGroup(e);
+        return;
+      }
+      console.error('Error creating group:', error);
+      alert('Error al crear la familia. Inténtalo de nuevo.');
+      return;
+    }
+
+    if (groupData) {
       // Add creator as admin member
       await supabase.from('group_members').insert([
         { group_id: groupData.id, user_id: user.id, role: 'admin' }
@@ -325,11 +423,11 @@ export default function PajeDigital() {
   };
 
   const deleteGift = async (giftId, giftName) => {
-    const gift = gifts.find(g => g.id === giftId);
-    const hasReservations = gift?.reservations?.length > 0;
+    // Only admins can delete gifts
+    const isAdmin = selectedGroup.admin_id === user.id;
     
-    if (hasReservations) {
-      alert(`No puedes eliminar "${giftName}" porque ya está reservado por alguien. Pídele a esa persona que lo des-reserve primero.`);
+    if (!isAdmin) {
+      alert('Solo el administrador de la familia puede eliminar regalos.');
       return;
     }
     
@@ -337,9 +435,26 @@ export default function PajeDigital() {
       return;
     }
     
-    // Delete gift
+    // Delete gift (reservations will be deleted automatically via CASCADE)
     await supabase.from('gifts').delete().eq('id', giftId);
     loadGroupData();
+  };
+
+  const deleteGroup = async () => {
+    // Only admin can delete the group
+    if (selectedGroup.admin_id !== user.id) {
+      alert('Solo el administrador puede eliminar la familia.');
+      return;
+    }
+    
+    if (!confirm(`¿Seguro que quieres eliminar la familia "${selectedGroup.name}"? Esta acción no se puede deshacer y se eliminarán todos los regalos y miembros.`)) {
+      return;
+    }
+    
+    // Delete group (members and gifts will be deleted via CASCADE)
+    await supabase.from('groups').delete().eq('id', selectedGroup.id);
+    setSelectedGroup(null);
+    loadGroups();
   };
 
   if (loading) {
@@ -358,7 +473,34 @@ export default function PajeDigital() {
           <div className="text-center mb-8">
             <Gift className="w-20 h-20 mx-auto text-red-600 mb-4" />
             <h1 className="text-4xl font-bold text-red-700 mb-2">Paje Digital</h1>
-            <p className="text-gray-600">Organiza los regalos de Reyes en familia</p>
+            <p className="text-gray-600 mb-4">Organiza los regalos de Reyes en familia</p>
+            
+            {/* Countdown to Reyes */}
+            <div className="bg-gradient-to-r from-red-100 to-green-100 rounded-lg p-4 border-2 border-red-300">
+              <p className="text-sm font-semibold text-red-700 mb-2">⏰ Faltan para Reyes:</p>
+              <div className="flex justify-center gap-3 text-center">
+                <div className="bg-white rounded-lg px-3 py-2 min-w-[60px]">
+                  <div className="text-2xl font-bold text-red-600">{countdown.months}</div>
+                  <div className="text-xs text-gray-600">meses</div>
+                </div>
+                <div className="bg-white rounded-lg px-3 py-2 min-w-[60px]">
+                  <div className="text-2xl font-bold text-red-600">{countdown.days}</div>
+                  <div className="text-xs text-gray-600">días</div>
+                </div>
+                <div className="bg-white rounded-lg px-3 py-2 min-w-[60px]">
+                  <div className="text-2xl font-bold text-red-600">{countdown.hours}</div>
+                  <div className="text-xs text-gray-600">horas</div>
+                </div>
+                <div className="bg-white rounded-lg px-3 py-2 min-w-[60px]">
+                  <div className="text-2xl font-bold text-red-600">{countdown.minutes}</div>
+                  <div className="text-xs text-gray-600">min</div>
+                </div>
+                <div className="bg-white rounded-lg px-3 py-2 min-w-[60px]">
+                  <div className="text-2xl font-bold text-red-600">{countdown.seconds}</div>
+                  <div className="text-xs text-gray-600">seg</div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {authError && (
@@ -469,13 +611,26 @@ export default function PajeDigital() {
                 <h1 className="text-3xl font-bold text-red-700">Paje Digital</h1>
                 <p className="text-gray-600">Hola, {user.user_metadata?.username || user.email}</p>
               </div>
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-red-600 transition"
-              >
-                <LogOut size={20} />
-                Salir
-              </button>
+              <div className="flex items-center gap-4">
+                {/* Compact countdown */}
+                <div className="bg-gradient-to-r from-red-50 to-green-50 rounded-lg px-4 py-2 border border-red-200">
+                  <div className="text-xs text-red-700 font-semibold mb-1">⏰ Faltan para Reyes:</div>
+                  <div className="flex gap-2 text-center">
+                    <div><span className="text-lg font-bold text-red-600">{countdown.months}</span><span className="text-xs text-gray-600">m</span></div>
+                    <div><span className="text-lg font-bold text-red-600">{countdown.days}</span><span className="text-xs text-gray-600">d</span></div>
+                    <div><span className="text-lg font-bold text-red-600">{countdown.hours}</span><span className="text-xs text-gray-600">h</span></div>
+                    <div><span className="text-lg font-bold text-red-600">{countdown.minutes}</span><span className="text-xs text-gray-600">m</span></div>
+                    <div><span className="text-lg font-bold text-red-600">{countdown.seconds}</span><span className="text-xs text-gray-600">s</span></div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-red-600 transition"
+                >
+                  <LogOut size={20} />
+                  Salir
+                </button>
+              </div>
             </div>
           </div>
 
@@ -602,12 +757,46 @@ export default function PajeDigital() {
                 <h1 className="text-3xl font-bold text-red-700">{selectedGroup.name}</h1>
                 <p className="text-sm text-gray-600">{members.length} miembros</p>
               </div>
+              {/* Compact countdown in group view */}
+              <div className="ml-4 bg-gradient-to-r from-red-50 to-green-50 rounded-lg px-3 py-2 border border-red-200">
+                <div className="text-xs text-red-700 font-semibold">⏰ Reyes en:</div>
+                <div className="flex gap-1 text-center text-xs">
+                  <div><span className="font-bold text-red-600">{countdown.months}</span>m</div>
+                  <div><span className="font-bold text-red-600">{countdown.days}</span>d</div>
+                  <div><span className="font-bold text-red-600">{countdown.hours}</span>h</div>
+                  <div><span className="font-bold text-red-600">{countdown.minutes}</span>m</div>
+                  <div><span className="font-bold text-red-600">{countdown.seconds}</span>s</div>
+                </div>
+              </div>
             </div>
             <div className="flex gap-2">
               {selectedGroup.admin_id === user.id && (
-                <div className="px-4 py-2 bg-yellow-100 rounded-lg">
-                  <p className="text-xs text-gray-600">Código de invitación:</p>
-                  <p className="font-mono font-bold text-yellow-800">{selectedGroup.invite_code}</p>
+                <>
+                  <div className="px-4 py-2 bg-yellow-100 rounded-lg">
+                    <p className="text-xs text-gray-600">Código de invitación:</p>
+                    <p className="font-mono font-bold text-yellow-800">{selectedGroup.invite_code}</p>
+                  </div>
+                  <button
+                    onClick={deleteGroup}
+                    className="px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition"
+                    title="Eliminar familia"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </>
+              )}
+              {notificationPermission === 'default' && (
+                <button
+                  onClick={requestNotificationPermission}
+                  className="px-4 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition text-sm font-medium"
+                  title="Activar notificaciones del navegador"
+                >
+                  🔔 Activar notificaciones
+                </button>
+              )}
+              {notificationPermission === 'granted' && (
+                <div className="px-3 py-2 bg-green-50 text-green-700 rounded-lg text-xs flex items-center gap-1">
+                  ✅ Notificaciones ON
                 </div>
               )}
               <button
@@ -747,10 +936,11 @@ export default function PajeDigital() {
                       <h3 className="font-bold text-lg text-gray-800">{gift.name}</h3>
                       <p className="text-sm text-gray-600">Para: {gift.user.username}</p>
                     </div>
-                    {isMyGift && (
+                    {selectedGroup.admin_id === user.id && (
                       <button
-                        onClick={() => deleteGift(gift.id)}
+                        onClick={() => deleteGift(gift.id, gift.name)}
                         className="text-red-500 hover:text-red-700"
+                        title="Solo el administrador puede eliminar regalos"
                       >
                         <Trash2 size={18} />
                       </button>
