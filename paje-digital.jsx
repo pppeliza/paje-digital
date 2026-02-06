@@ -23,6 +23,9 @@ export default function PajeDigital() {
   const [countdown, setCountdown] = useState({ months: 0, days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [notificationPermission, setNotificationPermission] = useState('default');
   const [isIOSSafari, setIsIOSSafari] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   // Auth states
   const [email, setEmail] = useState('');
@@ -52,6 +55,12 @@ export default function PajeDigital() {
     const iOSSafari = iOS && webkit && !/CriOS|FxiOS|OPiOS|mercury/.test(ua);
     setIsIOSSafari(iOSSafari);
     
+    // Check if app is installed (running as PWA)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+                      || window.navigator.standalone 
+                      || document.referrer.includes('android-app://');
+    setIsInstalled(isStandalone);
+    
     // Check notification permission
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission);
@@ -63,6 +72,26 @@ export default function PajeDigital() {
     } else {
       setNotificationPermission('unsupported');
     }
+    
+    // Listen for PWA install prompt (Android/Desktop)
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+    
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    // Listen for app installed event
+    window.addEventListener('appinstalled', () => {
+      setIsInstalled(true);
+      setShowInstallBanner(false);
+      setDeferredPrompt(null);
+    });
+    
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
 
   useEffect(() => {
@@ -319,7 +348,7 @@ export default function PajeDigital() {
         if (permission === 'granted') {
           new Notification('🎁 Paje Digital', {
             body: '¡Genial! Te avisaremos cuando haya novedades en la familia.',
-            icon: '/gift.svg'
+            icon: '/icon-192.png'
           });
         } else if (permission === 'denied') {
           alert('Vale, sin problema. Si cambias de opinión, puedes activarlas desde la configuración del navegador.');
@@ -329,6 +358,28 @@ export default function PajeDigital() {
         alert('Mmm, algo falló al activar las notificaciones.\n\n¿Estás usando HTTPS? Si no, prueba con Chrome o Firefox.');
       }
     }
+  };
+
+  const handleInstallPWA = async () => {
+    if (!deferredPrompt) {
+      // For iOS Safari, show instructions
+      if (isIOSSafari) {
+        alert('📱 Instalar Paje Digital en tu iPhone/iPad:\n\n1. Toca el botón "Compartir" (□↑) abajo\n2. Desplázate y toca "Añadir a pantalla de inicio"\n3. Toca "Añadir"\n\n¡Listo! Ahora tendrás el icono en tu pantalla y las notificaciones funcionarán incluso con la app cerrada.');
+      }
+      return;
+    }
+    
+    // Show install prompt
+    deferredPrompt.prompt();
+    
+    // Wait for user choice
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      setShowInstallBanner(false);
+    }
+    
+    setDeferredPrompt(null);
   };
 
   const markNotificationsAsRead = async () => {
@@ -933,6 +984,39 @@ export default function PajeDigital() {
             </div>
           </div>
         </div>
+
+        {/* PWA Install Banner */}
+        {(showInstallBanner || (isIOSSafari && !isInstalled)) && !isInstalled && (
+          <div className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-300 rounded-xl p-4 shadow-lg">
+            <div className="flex items-start gap-3">
+              <div className="text-3xl">📱</div>
+              <div className="flex-1">
+                <h3 className="font-bold text-blue-900 mb-1">
+                  {isIOSSafari ? '¡Instala la app en tu iPhone!' : '¡Instala Paje Digital!'}
+                </h3>
+                <p className="text-sm text-blue-800 mb-3">
+                  {isIOSSafari 
+                    ? 'Para recibir notificaciones con la app cerrada, añádela a tu pantalla de inicio.'
+                    : 'Recibe notificaciones incluso con la app cerrada. Funciona como una app nativa.'}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleInstallPWA}
+                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition text-sm"
+                  >
+                    {isIOSSafari ? 'Ver cómo instalar' : 'Instalar ahora'}
+                  </button>
+                  <button
+                    onClick={() => setShowInstallBanner(false)}
+                    className="px-4 py-2 text-blue-600 hover:bg-blue-100 rounded-lg transition text-sm"
+                  >
+                    Ahora no
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mb-6">
           <button
